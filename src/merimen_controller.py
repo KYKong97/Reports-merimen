@@ -4,16 +4,31 @@ import logging
 import pandas as pd
 from bs4 import BeautifulSoup
 import time
-from src.lib import preprocess_df
+import os
+
+
 
 
 class MerimenController:
+    def exit(self):
+        self.merimen_page.close()
+        self.browser.close()
+        self.playwright.stop()
+
     def __init__(self, merimen_username:str, merimen_password:str, headless=False,
                  executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe",slow_mo=None,
                  url = "https://report.merimen.com.my/claims/index.cfm") -> None:
         
-        playwright = sync_playwright().start()
-        self.browser = playwright.chromium.launch(headless=headless, executable_path=executable_path, slow_mo=slow_mo)
+        if os.path.isfile(executable_path)==False:
+            executable_path=r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+        if os.path.isfile(executable_path)==False:
+            executable_path=r"%LocalAppData%\Google\Chrome\Application\chrome.exe"
+        
+        if os.path.isfile(executable_path)==False:
+            raise Exception("Chrome cannot be found")
+
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(headless=headless, executable_path=executable_path, slow_mo=slow_mo)
         self.merimen_page = self.browser.new_page()
         self.merimen_page.goto(url)
         self.merimen_page.locator("#sleUserName").fill(merimen_username)
@@ -74,7 +89,7 @@ class MerimenController:
     def read_report_table(self):
         try:
             table = self.merimen_page.locator("//table[@border='1']")
-            html = table.inner_html()
+            html = table.inner_html(timeout=1000)
 
             list_claim = []
 
